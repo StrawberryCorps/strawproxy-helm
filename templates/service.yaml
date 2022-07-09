@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "strawproxy.fullname" . }}
+  labels:
+    {{- include "strawproxy.labels" . | nindent 4 }}
+  annotations:
+    external-dns.alpha.kubernetes.io/target: alexandre.eclixal.fr
+    external-dns.alpha.kubernetes.io/hostname: eclixal.fr
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: minecraft
+      protocol: TCP
+      name: minecraft
+  selector:
+    {{- include "strawproxy.selectorLabels" . | nindent 4 }}

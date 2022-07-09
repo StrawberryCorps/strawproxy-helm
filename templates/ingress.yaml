@@ -1,0 +1,45 @@
+{{- $fullName := include "strawproxy.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "strawproxy.labels" . | nindent 4 }}
+  annotations:
+    external-dns.alpha.kubernetes.io/target: alexandre.eclixal.fr
+    external-dns.alpha.kubernetes.io/hostname: eclixal.fr
+    cert-manager.io/cluster-issuer: "letsencrypt-prd"
+    kubernetes.io/tls-acme: "true"
+    traefik.ingress.kubernetes.io/frontend-entry-points: https
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  tls:
+  - hosts:
+    - play.eclixal.fr
+    secretName: {{ $fullName }}-certificates
+  rules:
+  - host: play.eclixal.fr
+    http:
+      paths:
+        - pathType: Prefix
+          path: "/"
+          backend:
+            service:
+              name: {{ $fullName }}
+              port:
+                number: {{ $svcPort }}
